@@ -207,9 +207,15 @@ pub enum VerificationError {
     /// closed by `close_migration_window`.
     MigrationWindowSealed = 58,
 
+    // ── Diversity / region gate bounds (issue #1632) ──
+    /// `set_min_region_quorum` was given a value above `MAX_VALIDATORS`.
+    InvalidRegionQuorum = 59,
+    /// `set_diversity_config` was given `required_distinct_affiliations`
+    /// outside `[1, MAX_VALIDATORS]` or `starting_milestone_index == 0`.
+    InvalidDiversityConfig = 60,
     // ── Cooldown config (issue #1633) ──
     /// Cooldown value exceeds the maximum allowed (7 days).
-    InvalidCooldown = 59,
+    InvalidCooldown = 61,
 }
 
 impl AdminError for VerificationError {

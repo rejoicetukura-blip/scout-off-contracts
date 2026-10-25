@@ -55,6 +55,18 @@ pub struct ValidatorRestored {
     pub wallet: Address,
 }
 
+/// Emitted by `set_validator_specializations`; `new` replaces the validator's
+/// tag list and `old` is kept for audit history. Data is published as the
+/// tuple `(wallet, old, new)` documented in docs/EVENT_REFERENCE.md.
+#[contractevent(topics = ["validator_specialization_updated"], data_format = "vec")]
+pub struct ValidatorSpecializationUpdated {
+    #[topic]
+    pub admin: Address,
+    pub wallet: Address,
+    pub old: soroban_sdk::Vec<String>,
+    pub new: soroban_sdk::Vec<String>,
+}
+
 /// Emitted by `transfer_validator`.
 #[contractevent]
 pub struct ValidatorTransferred {
@@ -174,6 +186,19 @@ pub struct ValidatorPendingVotesInvalidated {
     pub admin: Address,
     pub wallet: Address,
     pub invalidated_count: u32,
+}
+
+/// Emitted when a revocation leaves an open k-of-n claim with a snapshotted
+/// threshold above the active validator count, so the round is aborted and
+/// its votes discarded (issue #1613). The evidence can then be re-attested.
+#[contractevent]
+pub struct AttestationRoundAborted {
+    #[topic]
+    pub player_id: u64,
+    pub evidence_hash: String,
+    pub round: u32,
+    pub threshold: u32,
+    pub active_count: u32,
 }
 
 /// Emitted when progress cross-contract call fails (diagnostic stream only).
@@ -372,6 +397,22 @@ pub fn validator_transferred(
     .emit(env);
 }
 
+pub fn validator_specialization_updated(
+    env: &Env,
+    admin: &Address,
+    wallet: &Address,
+    old: &soroban_sdk::Vec<String>,
+    new: &soroban_sdk::Vec<String>,
+) {
+    ValidatorSpecializationUpdated {
+        admin: admin.clone(),
+        wallet: wallet.clone(),
+        old: old.clone(),
+        new: new.clone(),
+    }
+    .emit(env);
+}
+
 pub fn contract_paused(env: &Env, admin: &Address) {
     ContractPaused {
         admin: admin.clone(),
@@ -535,6 +576,24 @@ pub fn validator_pending_votes_invalidated(
         admin: admin.clone(),
         wallet: wallet.clone(),
         invalidated_count,
+    }
+    .emit(env);
+}
+
+pub fn attestation_round_aborted(
+    env: &Env,
+    player_id: u64,
+    evidence_hash: &String,
+    round: u32,
+    threshold: u32,
+    active_count: u32,
+) {
+    AttestationRoundAborted {
+        player_id,
+        evidence_hash: evidence_hash.clone(),
+        round,
+        threshold,
+        active_count,
     }
     .emit(env);
 }
@@ -798,4 +857,35 @@ pub fn reg_cooldown_updated(env: &Env, admin: &Address, old: u64, new: u64) {
         (Symbol::new(env, REG_COOLDOWN_UPDATED), admin.clone()),
         (old, new),
     );
+}
+
+/// Warning emitted when an admin configures a diversity gate that the current
+/// active validator set cannot satisfy (issue #1632). The setting is still
+/// stored — the gate is reachable again once enough validators are active.
+///
+/// topics: (event_name, admin)  data: (gate, required, active_validator_count)
+/// `gate` is `"min_region_quorum"` or `"diversity_config"`.
+#[contractevent(topics = ["diversity_gate_unreachable"], data_format = "vec")]
+pub struct DiversityGateUnreachable {
+    #[topic]
+    pub admin: Address,
+    pub gate: Symbol,
+    pub required: u32,
+    pub active_count: u32,
+}
+
+pub fn diversity_gate_unreachable(
+    env: &Env,
+    admin: &Address,
+    gate: &str,
+    required: u32,
+    active_count: u32,
+) {
+    DiversityGateUnreachable {
+        admin: admin.clone(),
+        gate: Symbol::new(env, gate),
+        required,
+        active_count,
+    }
+    .emit(env);
 }

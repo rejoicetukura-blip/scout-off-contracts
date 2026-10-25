@@ -38,6 +38,16 @@ pub struct ProfileUpdated {
     pub player_id: u64,
 }
 
+/// Emitted by `deregister_scout` (GDPR erasure, #1641).
+/// topics: (event_name, admin)  data: (scout_id, wallet)
+#[contractevent(topics = ["scout_deregistered"], data_format = "vec")]
+pub struct ScoutDeregistered {
+    #[topic]
+    pub admin: Address,
+    pub scout_id: u64,
+    pub wallet: Address,
+}
+
 /// Emitted by `deregister_player` (GDPR right-to-erasure).
 #[contractevent]
 pub struct PlayerDeregistered {
@@ -172,6 +182,15 @@ pub fn profile_updated(env: &Env, player_id: u64, wallet: &Address) {
     ProfileUpdated {
         wallet: wallet.clone(),
         player_id,
+    }
+    .emit(env);
+}
+
+pub fn scout_deregistered(env: &Env, scout_id: u64, wallet: &Address, admin: &Address) {
+    ScoutDeregistered {
+        admin: admin.clone(),
+        scout_id,
+        wallet: wallet.clone(),
     }
     .emit(env);
 }
